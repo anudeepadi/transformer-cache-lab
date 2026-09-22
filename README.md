@@ -1,198 +1,49 @@
-# Cache Optimization for Transformers
+# Transformer Cache Lab
 
-## Overview
-A specialized framework for optimizing cache performance in Transformer models, focusing on efficient memory usage and faster inference times. This project implements advanced caching strategies for attention mechanisms and intermediate computations in transformer architectures.
+A NumPy experiment comparing memory layouts in multi-head attention. The implementation exposes contiguous Q/K/V storage, row/column layout and alignment options, with a small test suite and saved benchmark artifacts.
 
-## Key Features
+**Status:** educational experiment from December 2024. This is an attention-layout study; it does not implement a production transformer serving engine or a general KV-cache library.
 
-### Cache Optimization
-- KV-Cache implementation for attention layers
-- Dynamic cache size management
-- Prefetching strategies for transformer blocks
-- Memory-efficient attention patterns
-- Cache eviction policies
+## Run a small example
 
-### Performance Features
-- Reduced memory footprint
-- Faster inference times
-- Optimized attention computation
-- Efficient memory management
-- Customizable caching strategies
-
-## Technical Details
-
-### Core Components
-- Custom attention layer implementations
-- Memory-efficient transformer blocks
-- Cache management system
-- Optimization algorithms
-- Performance monitoring tools
-
-### Optimization Strategies
-1. **KV-Cache Management**
-   - Dynamic sizing
-   - Prefetch optimization
-   - Memory allocation
-   - Cache coherence
-
-2. **Memory Optimization**
-   - Sparse attention patterns
-   - Gradient checkpointing
-   - Memory-efficient attention
-   - Optimized tensor operations
-
-3. **Inference Optimization**
-   - Batch processing
-   - Pipeline parallelism
-   - Efficient scheduling
-   - Resource management
-
-## Installation
-
-### Prerequisites
-- Python 3.8+
-- PyTorch 2.0+
-- CUDA toolkit (for GPU support)
-- Standard ML libraries
-
-### Setup
 ```bash
-# Clone the repository
-git clone https://github.com/anudeepadi/Cache_OPT_Transformers.git
-cd Cache_OPT_Transformers
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Unix/macOS
-# or
-.\venv\Scripts\activate  # Windows
-
-# Install dependencies
-pip install -r requirements.txt
+git clone https://github.com/anudeepadi/transformer-cache-lab.git
+cd transformer-cache-lab
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install numpy pytest
+python -m pytest tests/test_attention.py
 ```
 
-## Usage
-
-### Basic Implementation
 ```python
-from cache_opt_transformers import CacheOptimizedTransformer
+import numpy as np
+from src.model.attention import CacheAwareAttention, MemoryLayout
 
-# Initialize model with cache optimization
-model = CacheOptimizedTransformer(
-    hidden_size=768,
-    num_layers=12,
-    cache_config={
-        'strategy': 'dynamic',
-        'max_size': '2GB',
-        'eviction_policy': 'LRU'
-    }
-)
-
-# Run inference with optimized caching
-output = model.generate(
-    input_ids,
-    use_cache=True,
-    cache_strategy='optimal'
-)
+np.random.seed(42)
+model = CacheAwareAttention(dim=8, num_heads=2,
+    memory_layout=MemoryLayout(contiguous_qkv=True, row_major=True))
+output = model.forward(np.ones((2, 4, 8)))
+print(output.shape)  # (2, 2, 4, 4)
 ```
 
-### Advanced Configuration
-```python
-# Configure advanced caching options
-cache_config = {
-    'mode': 'adaptive',
-    'prefetch_size': 1024,
-    'memory_efficient': True,
-    'optimization_level': 'aggressive'
-}
+Validation on 22 September 2026: the four existing attention tests passed, and the example above produced `(2, 2, 4, 4)`. This validates the small example, not performance claims.
 
-model.configure_cache(cache_config)
-```
+## Saved measurements
 
-## Performance Benchmarks
+![Historical attention execution times](benchmark_results/execution_times.png)
 
-### Memory Usage
-```
-Standard Transformer: 16GB
-Cache Optimized: 8GB
-Memory Reduction: 50%
-```
+The [saved JSON](benchmark_results/benchmark_results.json) and [benchmark script](benchmarks/benchmark_layouts.py) cover small combinations of model dimension, batch size, sequence length and layout. The JSON does not record hardware, software versions or run date; several memory measurements are zero. These artifacts cannot support a general percentage memory reduction or inference-speed claim.
 
-### Inference Speed
-```
-Standard Processing: 100 tokens/sec
-Optimized Processing: 180 tokens/sec
-Speed Improvement: 80%
-```
+To reproduce the benchmark, install `requirements.txt` and run `python -m benchmarks.benchmark_layouts` from the repository root. Record CPU, OS, NumPy/BLAS versions and raw timings alongside any comparison. Profiling uses Windows counters or Linux `perf`; the current non-Windows path also selects Linux `perf` on macOS and needs platform-specific handling there. Counter-derived cache statistics require validation before interpretation.
 
-## Configuration Options
+## Source map
 
-### Cache Settings
-```yaml
-cache:
-  mode: dynamic  # static/dynamic/adaptive
-  max_size: 2GB  # maximum cache size
-  strategy: LRU  # LRU/FIFO/LFU
-  prefetch: true # enable prefetching
-```
+- [Attention and layout options](src/model/attention.py)
+- [Shape/layout/numerical-finiteness tests](tests/test_attention.py)
+- [Profiling helpers](src/profiling/cache_monitor.py)
 
-### Optimization Settings
-```yaml
-optimization:
-  level: aggressive  # conservative/moderate/aggressive
-  memory_efficient: true
-  gradient_checkpointing: true
-  attention_optimization: true
-```
+The tests check output shape and finite values. They do not establish equivalence to a reference attention implementation or benchmark statistical significance.
 
-## Contributing
+## Credits
 
-We welcome contributions! Here's how you can help:
-
-1. Fork the repository
-2. Create a feature branch
-3. Implement your changes
-4. Add tests for new features
-5. Submit a pull request
-
-### Development Guidelines
-- Follow PEP 8 style guide
-- Add unit tests
-- Update documentation
-- Use type hints
-- Write clear commit messages
-
-## Testing
-
-Run tests using:
-```bash
-# Run all tests
-pytest tests/
-
-# Run specific test suite
-pytest tests/test_cache_optimization.py
-```
-
-## Future Development
-
-### Planned Features
-- Multi-GPU cache synchronization
-- Advanced prefetching algorithms
-- Dynamic optimization strategies
-- Custom cache policies
-- Performance analytics tools
-
-## Acknowledgments
-- Transformer architecture papers
-- PyTorch community
-- ML optimization research
-- Contributing developers
-
-## Contact
-For questions and support:
-- GitHub Issues: [Create an issue](https://github.com/anudeepadi/Cache_OPT_Transformers/issues)
-- GitHub: [@anudeepadi](https://github.com/anudeepadi)
-
----
-
-**Note**: This project is under active development. Features and documentation are regularly updated.
+The original project acknowledges transformer research, the PyTorch community, ML optimization research and contributing developers. The attention implementation demonstrated above uses NumPy.
